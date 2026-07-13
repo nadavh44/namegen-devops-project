@@ -1,13 +1,13 @@
 variable "aws_region" {
   description = "AWS Region where resources will be created."
   type        = string
-  default     = "eu-central-1"
+  default     = "us-west-2"
 }
 
 variable "cluster_name" {
   description = "EKS cluster name."
   type        = string
-  default     = "eks-auto-mode-cluster"
+  default     = "namegen-eks"
 }
 
 variable "kubernetes_version" {
@@ -25,7 +25,7 @@ variable "vpc_cidr" {
 variable "github_repository" {
   description = "GitHub repository allowed to assume the deployment role. Format: owner/repository."
   type        = string
-  default     = "fnsfbk/pacman-project"
+  default     = "nadavh44/namegen-devops-project"
 
   validation {
     condition     = can(regex("^[^/]+/[^/]+$", var.github_repository))
@@ -36,11 +36,11 @@ variable "github_repository" {
 variable "github_branch" {
   description = "Git branch allowed to assume the GitHub Actions IAM role."
   type        = string
-  default     = "master"
+  default     = "main"
 }
 
 variable "ecr_repository_name" {
   description = "Name of the ECR repository where GitHub Actions pushes images."
   type        = string
-  default     = "myapps/pacman"
+  default     = "namegen"
 }
