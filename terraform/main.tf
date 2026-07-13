@@ -298,14 +298,8 @@ resource "aws_ecr_repository" "app" {
 # GitHub Actions OIDC provider
 # ---------------------------------------
 
-resource "aws_iam_openid_connect_provider" "github_actions" {
+data "aws_iam_openid_connect_provider" "github_actions" {
   url = "https://token.actions.githubusercontent.com"
-
-  client_id_list = ["sts.amazonaws.com"]
-
-  tags = {
-    Name = "github-actions-oidc"
-  }
 }
 
 # ---------------------------------------
@@ -320,7 +314,7 @@ data "aws_iam_policy_document" "github_actions_assume_role" {
 
     principals {
       type        = "Federated"
-      identifiers = [aws_iam_openid_connect_provider.github_actions.arn]
+      identifiers = [data.aws_iam_openid_connect_provider.github_actions.arn]
     }
 
     condition {
