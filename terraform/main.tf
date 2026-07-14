@@ -221,9 +221,10 @@ resource "aws_iam_role_policy_attachment" "eks_node" {
 # ---------------------------------------
 
 resource "aws_eks_cluster" "this" {
-  name     = var.cluster_name
-  role_arn = aws_iam_role.eks_cluster.arn
-  version  = var.kubernetes_version
+  name                          = var.cluster_name
+  role_arn                      = aws_iam_role.eks_cluster.arn
+  version                       = var.kubernetes_version
+  bootstrap_self_managed_addons = false
 
   access_config {
     authentication_mode                         = "API"
