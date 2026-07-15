@@ -1,1 +1,98 @@
+name: NameGen CI/CD Pipeline
 
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "README.md"
+      - "docs/**"
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: namegen-production-deployment
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-west-2
+  EKS_CLUSTER_NAME: namegen-eks
+  ECR_REPOSITORY: namegen
+  K8S_NAMESPACE: namegen
+  K8S_DEPLOYMENT: namegen
+
+jobs:
+  build-and-deploy:
+    name: Build and deploy to Amazon EKS
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure temporary AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: namegen-github-actions-${{ github.run_id }}
+
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Docker image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker buildx build \
+            --platform linux/amd64 \
+            --tag "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" \
+            --push \
+            .
+
+      - name: Configure kubectl
+        run: |
+          aws eks update-kubeconfig \
+            --region "$AWS_REGION" \
+            --name "$EKS_CLUSTER_NAME"
+
+      - name: Prepare Kubernetes deployment image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          sed -i \
+            "s|image: .*namegen:.*|image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|" \
+            k8s/app-deployment.yaml
+
+      - name: Deploy Kubernetes manifests
+        run: |
+          kubectl apply -f k8s/namespace.yaml
+          kubectl wait \
+            --for=jsonpath='{.status.phase}'=Active \
+            namespace/namegen \
+            --timeout=60s
+
+          kubectl apply -f k8s/
+
+      - name: Verify deployment rollout
+        run: |
+          kubectl rollout status \
+            deployment/"$K8S_DEPLOYMENT" \
+            --namespace "$K8S_NAMESPACE" \
+            --timeout=10m
+
+      - name: Display deployment status
+        run: |
+          kubectl get deployment,pods,services \
+            --namespace "$K8S_NAMESPACE" \
+            --output wide
