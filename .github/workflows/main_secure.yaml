@@ -5,9 +5,17 @@ on:
   push:
     branches:
       - main
-    paths-ignore:
-      - "README.md"
-      - "docs/**"
+    paths:
+      - "Dockerfile"
+      - ".dockerignore"
+      - "package.json"
+      - "package-lock.json"
+      - "server.js"
+      - "logger.js"
+      - "data/**"
+      - "public/**"
+      - "k8s/**"
+      - ".github/workflows/main_secure.yaml"
 
 permissions:
   id-token: write
